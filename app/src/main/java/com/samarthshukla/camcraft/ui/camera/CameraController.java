@@ -1,5 +1,4 @@
-
-package com.samarthshukla.camcraft.camera;
+package com.samarthshukla.camcraft.ui.camera;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -9,10 +8,15 @@ import android.provider.MediaStore;
 
 import androidx.annotation.NonNull;
 import androidx.camera.core.Camera;
+import androidx.camera.core.CameraControl;
+import androidx.camera.core.CameraInfo;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.FocusMeteringAction;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
+import androidx.camera.core.MeteringPoint;
 import androidx.camera.core.Preview;
+import androidx.camera.core.SurfaceOrientedMeteringPointFactory;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.lifecycle.LifecycleOwner;
@@ -20,6 +24,7 @@ import androidx.lifecycle.LifecycleOwner;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.Executor;
+import androidx.camera.core.MeteringPoint;
 
 public class CameraController {
 
@@ -125,6 +130,104 @@ public class CameraController {
         }
     }
 
+    // ---------------- ZOOM ----------------
+
+    public float getMinZoomRatio() {
+        if (camera == null) return 1f;
+        return camera.getCameraInfo()
+                .getZoomState()
+                .getValue()
+                .getMinZoomRatio();
+    }
+
+    public float getMaxZoomRatio() {
+        if (camera == null) return 1f;
+        return camera.getCameraInfo()
+                .getZoomState()
+                .getValue()
+                .getMaxZoomRatio();
+    }
+
+    public void setZoomRatio(float ratio) {
+        if (camera == null) return;
+
+        CameraInfo info = camera.getCameraInfo();
+        float min = getMinZoomRatio();
+        float max = getMaxZoomRatio();
+
+        float safeRatio = Math.max(min, Math.min(ratio, max));
+
+        camera.getCameraControl().setZoomRatio(safeRatio);
+    }
+
+    // ---------------- TAP TO FOCUS ----------------
+
+
+    public void focusAt(@NonNull MeteringPoint point) {
+        if (camera == null) return;
+
+        FocusMeteringAction action = new FocusMeteringAction.Builder(
+                point,
+                FocusMeteringAction.FLAG_AF | FocusMeteringAction.FLAG_AE
+        )
+                .setAutoCancelDuration(
+                        3,
+                        java.util.concurrent.TimeUnit.SECONDS
+                )
+                .build();
+
+        camera.getCameraControl().startFocusAndMetering(action);
+    }
+
+
+    // ---------------- EXPOSURE ----------------
+
+    public int getMinExposureIndex() {
+        if (camera == null) return 0;
+        return camera.getCameraInfo()
+                .getExposureState()
+                .getExposureCompensationRange()
+                .getLower();
+    }
+
+    public int getMaxExposureIndex() {
+        if (camera == null) return 0;
+        return camera.getCameraInfo()
+                .getExposureState()
+                .getExposureCompensationRange()
+                .getUpper();
+    }
+
+    public int getCurrentExposureIndex() {
+        if (camera == null) return 0;
+        return camera.getCameraInfo()
+                .getExposureState()
+                .getExposureCompensationIndex();
+    }
+
+    public float getExposureStep() {
+        if (camera == null) return 0f;
+
+        return camera.getCameraInfo()
+                .getExposureState()
+                .getExposureCompensationStep()
+                .floatValue();
+    }
+
+    public void setExposureIndex(int index) {
+        if (camera == null) return;
+
+        int safeIndex = Math.max(
+                getMinExposureIndex(),
+                Math.min(index, getMaxExposureIndex())
+        );
+
+        camera.getCameraControl()
+                .setExposureCompensationIndex(safeIndex);
+    }
+
+    // ---------------- PHOTO CAPTURE ----------------
+
     public void capturePhoto(
             @NonNull Context context,
             @NonNull Executor executor,
@@ -135,7 +238,8 @@ public class CameraController {
             return;
         }
 
-        String fileName = "CamCraft_" + System.currentTimeMillis() + ".jpg";
+        String fileName =
+                "CamCraft_" + System.currentTimeMillis() + ".jpg";
 
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
@@ -168,7 +272,9 @@ public class CameraController {
                         Uri savedUri = results.getSavedUri();
 
                         if (savedUri == null) {
-                            callback.onError("Photo was saved without a URI.");
+                            callback.onError(
+                                    "Photo was saved without a URI."
+                            );
                             return;
                         }
 

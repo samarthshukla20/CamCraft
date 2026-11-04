@@ -16,29 +16,116 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Focus indicator -->
+    <View
+        android:id="@+id/focusIndicator"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:background="@drawable/bg_focus_indicator"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false" />
+
+    <!-- Zoom controls -->
+    <LinearLayout
+        android:id="@+id/zoomControls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="12dp"
+        android:background="#99000000"
+        app:layout_constraintBottom_toTopOf="@id/exposureControls"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/txtZoom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1.0x"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <SeekBar
+            android:id="@+id/seekZoom"
+            android:layout_width="220dp"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="0" />
+
+    </LinearLayout>
+
+    <!-- Exposure controls -->
+    <LinearLayout
+        android:id="@+id/exposureControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="8dp"
+        android:background="#99000000"
+        app:layout_constraintBottom_toTopOf="@id/cameraControls">
+
+        <TextView
+            android:id="@+id/txtExposure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="EV 0"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/seekExposure"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:max="24"
+            android:progress="12" />
+
+        <ImageButton
+            android:id="@+id/btnResetExposure"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="#FFFFFF"
+            android:contentDescription="Reset exposure" />
+
+    </LinearLayout>
+
+    <!-- Camera controls -->
     <LinearLayout
         android:id="@+id/cameraControls"
         android:layout_width="match_parent"
         android:layout_height="112dp"
         android:gravity="center"
         android:orientation="horizontal"
-        android:paddingHorizontal="28dp"
+        android:paddingHorizontal="12dp"
         android:background="#000000"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
             android:id="@+id/btnGallery"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Open gallery"
             android:src="@android:drawable/ic_menu_gallery"
             android:tint="#FFFFFF" />
 
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
         <ImageButton
             android:id="@+id/btnFlash"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Change flash mode"
             android:src="@android:drawable/ic_menu_camera"
@@ -65,12 +152,17 @@
 
         <ImageButton
             android:id="@+id/btnSwitchCamera"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Switch camera"
             android:src="@android:drawable/ic_menu_rotate"
             android:tint="#FFFFFF" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
     </LinearLayout>
 
