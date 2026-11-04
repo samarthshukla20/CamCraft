@@ -1,4 +1,3 @@
-
 package com.samarthshukla.camcraft.ui.camera;
 
 import android.Manifest;
@@ -29,6 +28,10 @@ import com.samarthshukla.camcraft.databinding.FragmentCameraBinding;
 import com.samarthshukla.camcraft.ui.gallery.GalleryFragment;
 
 import java.util.Locale;
+
+import android.database.Cursor;
+import android.provider.MediaStore;
+import com.bumptech.glide.Glide;
 
 public class CameraFragment extends Fragment {
 
@@ -95,6 +98,7 @@ public class CameraFragment extends Fragment {
         cameraController = new CameraController();
 
         setupButtons();
+        loadLastPhotoThumbnail();
         setupZoomControls();
         setupExposureControls();
         setupPreviewGestures();
@@ -102,6 +106,61 @@ public class CameraFragment extends Fragment {
 
         requestCameraPermissionIfNeeded();
     }
+
+
+    private void loadLastPhotoThumbnail() {
+        if (binding == null) return;
+
+        String[] projection = {
+                MediaStore.Images.Media._ID
+        };
+
+        String selection =
+                MediaStore.Images.Media.RELATIVE_PATH + "=?";
+
+        String[] selectionArgs = {
+                "Pictures/CamCraft/"
+        };
+
+        String sortOrder =
+                MediaStore.Images.Media.DATE_ADDED + " DESC";
+
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                sortOrder
+        )) {
+            if (cursor != null && cursor.moveToFirst()) {
+
+                long id = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(
+                                MediaStore.Images.Media._ID
+                        )
+                );
+
+                Uri photoUri = Uri.withAppendedPath(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        String.valueOf(id)
+                );
+
+                Glide.with(this)
+                        .load(photoUri)
+                        .centerCrop()
+                        .into(binding.imgLastPhoto);
+
+            } else {
+                binding.imgLastPhoto.setImageResource(
+                        android.R.drawable.ic_menu_gallery
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // ---------------- BUTTONS ----------------
 
@@ -117,17 +176,6 @@ public class CameraFragment extends Fragment {
 
         binding.btnCapture.setOnClickListener(v ->
                 capturePhoto()
-        );
-
-        binding.btnGallery.setOnClickListener(v ->
-                getParentFragmentManager()
-                        .beginTransaction()
-                        .replace(
-                                R.id.fragmentContainer,
-                                new GalleryFragment()
-                        )
-                        .addToBackStack(null)
-                        .commit()
         );
 
         binding.btnResetExposure.setOnClickListener(v -> {
@@ -515,6 +563,8 @@ public class CameraFragment extends Fragment {
                         if (binding == null) return;
 
                         binding.btnCapture.setEnabled(true);
+                        loadLastPhotoThumbnail();
+
                         showMessage("Photo saved to Pictures/CamCraft");
                     }
 
@@ -576,5 +626,11 @@ public class CameraFragment extends Fragment {
         binding = null;
 
         super.onDestroyView();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        loadLastPhotoThumbnail();
     }
 }

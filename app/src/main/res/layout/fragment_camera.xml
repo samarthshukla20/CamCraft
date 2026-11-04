@@ -108,14 +108,30 @@
         android:background="#000000"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <ImageButton
-            android:id="@+id/btnGallery"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Open gallery"
-            android:src="@android:drawable/ic_menu_gallery"
-            android:tint="#FFFFFF" />
+
+        <FrameLayout
+            android:layout_width="52dp"
+            android:layout_height="52dp">
+
+            <ImageView
+                android:id="@+id/imgLastPhoto"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:background="#333333"
+                android:contentDescription="Last captured photo" />
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="3dp"
+                android:src="@android:drawable/ic_menu_gallery"
+                android:tint="#FFFFFF"
+                android:contentDescription="Gallery" />
+
+        </FrameLayout>
+
 
         <View
             android:layout_width="0dp"
