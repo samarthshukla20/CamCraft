@@ -27,6 +27,15 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
+            android:id="@+id/btnGallery"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Open gallery"
+            android:src="@android:drawable/ic_menu_gallery"
+            android:tint="#FFFFFF" />
+
+        <ImageButton
             android:id="@+id/btnFlash"
             android:layout_width="52dp"
             android:layout_height="52dp"

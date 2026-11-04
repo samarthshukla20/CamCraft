@@ -22,6 +22,7 @@ import com.samarthshukla.camcraft.R;
 import com.samarthshukla.camcraft.camera.CameraController;
 import com.samarthshukla.camcraft.data.model.CameraUiState;
 import com.samarthshukla.camcraft.databinding.FragmentCameraBinding;
+import com.samarthshukla.camcraft.ui.gallery.GalleryFragment;
 
 public class CameraFragment extends Fragment {
 
@@ -87,6 +88,14 @@ public class CameraFragment extends Fragment {
 
         binding.btnCapture.setOnClickListener(v -> {
             capturePhoto();
+        });
+
+        binding.btnGallery.setOnClickListener(v -> {
+            getParentFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, new GalleryFragment())
+                    .addToBackStack(null)
+                    .commit();
         });
     }
 
