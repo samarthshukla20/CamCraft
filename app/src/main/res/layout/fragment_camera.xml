@@ -109,9 +109,15 @@
         app:layout_constraintBottom_toBottomOf="parent">
 
 
+
         <FrameLayout
+            android:id="@+id/btnGallery"
             android:layout_width="52dp"
-            android:layout_height="52dp">
+            android:layout_height="52dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:contentDescription="Open gallery">
 
             <ImageView
                 android:id="@+id/imgLastPhoto"

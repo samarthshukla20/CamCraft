@@ -13,6 +13,10 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import com.samarthshukla.camcraft.R;
 import com.samarthshukla.camcraft.databinding.FragmentGalleryBinding;
 
+import com.samarthshukla.camcraft.data.model.Photo;
+import java.util.ArrayList;
+import java.util.List;
+
 public class GalleryFragment extends Fragment {
 
     private FragmentGalleryBinding binding;
@@ -33,9 +37,26 @@ public class GalleryFragment extends Fragment {
         binding = FragmentGalleryBinding.bind(view);
         viewModel = new ViewModelProvider(this).get(GalleryViewModel.class);
 
+
         adapter = new PhotoAdapter(photo -> {
+            List<Photo> currentPhotos = viewModel.getPhotos().getValue();
+
+            if (currentPhotos == null || currentPhotos.isEmpty()) {
+                return;
+            }
+
+            int selectedIndex = currentPhotos.indexOf(photo);
+
             Bundle args = new Bundle();
-            args.putString("photo_uri", photo.getUri().toString());
+            args.putInt("selected_index", selectedIndex);
+
+            ArrayList<String> photoUris = new ArrayList<>();
+
+            for (Photo item : currentPhotos) {
+                photoUris.add(item.getUri().toString());
+            }
+
+            args.putStringArrayList("photo_uris", photoUris);
 
             PhotoViewerFragment viewer = new PhotoViewerFragment();
             viewer.setArguments(args);
@@ -46,6 +67,7 @@ public class GalleryFragment extends Fragment {
                     .addToBackStack(null)
                     .commit();
         });
+
 
         binding.recyclerPhotos.setLayoutManager(
                 new GridLayoutManager(requireContext(), 3)

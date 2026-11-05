@@ -164,6 +164,7 @@ public class CameraFragment extends Fragment {
 
     // ---------------- BUTTONS ----------------
 
+
     private void setupButtons() {
 
         binding.btnFlash.setOnClickListener(v ->
@@ -178,6 +179,8 @@ public class CameraFragment extends Fragment {
                 capturePhoto()
         );
 
+        binding.btnGallery.setOnClickListener(v -> openGallery());
+
         binding.btnResetExposure.setOnClickListener(v -> {
             if (!cameraReady) return;
 
@@ -185,6 +188,18 @@ public class CameraFragment extends Fragment {
             updateExposureProgress(0);
         });
     }
+
+    private void openGallery() {
+
+        if (!isAdded()) return;
+
+        getParentFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, new GalleryFragment())
+                .addToBackStack("gallery")
+                .commit();
+    }
+
 
     // ---------------- VIEW MODEL ----------------
 
