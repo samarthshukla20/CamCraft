@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ImageButton
+        android:id="@+id/btnEditorBack"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_margin="12dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_media_previous"
+        android:tint="#FFFFFF"
+        android:contentDescription="Back"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="EDIT PHOTO"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="@id/btnEditorBack"
+        app:layout_constraintBottom_toBottomOf="@id/btnEditorBack"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <ImageView
+        android:id="@+id/editorPreview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="fitCenter"
+        android:contentDescription="Photo preview"
+        app:layout_constraintTop_toBottomOf="@id/btnEditorBack"
+        app:layout_constraintBottom_toTopOf="@id/editorToolsPlaceholder"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <ScrollView
+        android:id="@+id/editorToolsPlaceholder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#171717"
+        android:fillViewport="true"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BRIGHTNESS"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"/>
+
+            <SeekBar
+                android:id="@+id/brightnessSeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="200"
+                android:progress="100"
+                android:progressTint="#FFFFFF"
+                android:thumbTint="#FFFFFF"/>
+
+            <TextView
+                android:id="@+id/txtBrightnessValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#AAAAAA"
+                android:gravity="end"
+                android:textSize="11sp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="10dp"
+                android:background="#333333"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONTRAST"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"/>
+
+            <SeekBar
+                android:id="@+id/contrastSeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="200"
+                android:progress="100"
+                android:progressTint="#FFFFFF"
+                android:thumbTint="#FFFFFF"/>
+
+            <TextView
+                android:id="@+id/txtContrastValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textColor="#AAAAAA"
+                android:gravity="end"
+                android:textSize="11sp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginVertical="10dp"
+                android:background="#333333"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SATURATION"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"/>
+
+            <SeekBar
+                android:id="@+id/saturationSeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="200"
+                android:progress="100"
+                android:progressTint="#FFFFFF"
+                android:thumbTint="#FFFFFF"/>
+
+            <TextView
+                android:id="@+id/txtSaturationValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textColor="#AAAAAA"
+                android:gravity="end"
+                android:textSize="11sp"/>
+
+            <!-- FILTER PRESETS -->
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="FILTERS"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:letterSpacing="0.12"/>
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:scrollbars="none"
+                android:fillViewport="false">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/filterOriginal"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Original"/>
+
+                    <TextView
+                        android:id="@+id/filterWarm"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Warm"/>
+
+                    <TextView
+                        android:id="@+id/filterBW"
+                        style="@style/CamCraftFilterChip"
+                        android:text="B&amp;W"/>
+
+                    <TextView
+                        android:id="@+id/filterVintage"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Vintage"/>
+
+                    <TextView
+                        android:id="@+id/filterCool"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Cool"/>
+
+                    <TextView
+                        android:id="@+id/filterCinematic"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Cinematic"/>
+
+                    <TextView
+                        android:id="@+id/filterFade"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Fade"/>
+
+                    <TextView
+                        android:id="@+id/filterSepia"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Sepia"/>
+
+                    <TextView
+                        android:id="@+id/filterDramatic"
+                        style="@style/CamCraftFilterChip"
+                        android:text="Dramatic"/>
+
+                </LinearLayout>
+
+            </HorizontalScrollView>
+
+            <Button
+                android:id="@+id/btnResetAdjustments"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="Reset Adjustments"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#303030"/>
+
+            <Button
+                android:id="@+id/btnCrop"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:text="Crop/Rotate"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#303030"/>
+
+            <Button
+                android:id="@+id/btnSavePhoto"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:text="Save Photo"
+                android:textAllCaps="false"
+                android:textColor="#000000"
+                android:backgroundTint="#FFFFFF"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

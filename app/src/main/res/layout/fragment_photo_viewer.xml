@@ -50,7 +50,7 @@
         android:gravity="center"
         android:orientation="horizontal"
         android:background="#171717"
-        android:paddingHorizontal="36dp"
+        android:paddingHorizontal="28dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
@@ -61,6 +61,20 @@
             android:src="@android:drawable/ic_menu_delete"
             android:tint="#FFFFFF"
             android:contentDescription="Delete photo" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btnEditPhoto"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_edit"
+            android:tint="#FFFFFF"
+            android:contentDescription="Edit photo" />
 
         <View
             android:layout_width="0dp"

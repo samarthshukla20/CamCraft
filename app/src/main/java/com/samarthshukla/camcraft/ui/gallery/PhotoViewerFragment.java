@@ -68,6 +68,7 @@ public class PhotoViewerFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         binding = FragmentPhotoViewerBinding.bind(view);
+        binding.btnEditPhoto.setOnClickListener(v -> openEditor());
 
         Bundle args = getArguments();
 
@@ -107,6 +108,22 @@ public class PhotoViewerFragment extends Fragment {
         });
 
         displayPhoto();
+    }
+
+    private void openEditor() {
+        if (photoUris == null || photoUris.isEmpty()) return;
+
+        Bundle bundle = new Bundle();
+        bundle.putString("photo_uri", photoUris.get(currentIndex));
+
+        PhotoEditorFragment editorFragment = new PhotoEditorFragment();
+        editorFragment.setArguments(bundle);
+
+        getParentFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, editorFragment)
+                .addToBackStack(null)
+                .commit();
     }
 
     // ---------------- SWIPE NAVIGATION ----------------
