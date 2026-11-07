@@ -23,6 +23,7 @@ import com.samarthshukla.camcraft.databinding.FragmentPhotoViewerBinding;
 
 import java.util.ArrayList;
 import android.content.IntentSender;
+import android.provider.DocumentsContract;
 
 public class PhotoViewerFragment extends Fragment {
 
@@ -204,10 +205,35 @@ public class PhotoViewerFragment extends Fragment {
     }
 
     private void deleteCurrentPhoto() {
-        if (photoUris.isEmpty()) return;
+        if (photoUris == null || photoUris.isEmpty()) return;
 
         Uri uri = Uri.parse(photoUris.get(currentIndex));
 
+        // SAF custom-folder photo
+        if (DocumentsContract.isDocumentUri(requireContext(), uri)) {
+            try {
+                boolean deleted = DocumentsContract.deleteDocument(
+                        requireContext().getContentResolver(),
+                        uri
+                );
+
+                if (deleted) {
+                    removeDeletedPhoto(uri.toString());
+                } else {
+                    showMessage("Unable to delete this photo.");
+                }
+
+            } catch (SecurityException e) {
+                showMessage("Permission required to delete this photo.");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showMessage("Unable to delete this photo.");
+            }
+
+            return;
+        }
+
+        // MediaStore photo
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 android.app.PendingIntent pendingIntent =
@@ -219,12 +245,13 @@ public class PhotoViewerFragment extends Fragment {
                 pendingDeleteUri = uri.toString();
 
                 deleteLauncher.launch(
-                        new androidx.activity.result.IntentSenderRequest.Builder(
+                        new IntentSenderRequest.Builder(
                                 pendingIntent.getIntentSender()
                         ).build()
                 );
 
             } catch (Exception e) {
+                e.printStackTrace();
                 showMessage("Unable to request photo deletion.");
             }
 

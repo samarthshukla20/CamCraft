@@ -26,6 +26,10 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.Executor;
 import androidx.camera.core.MeteringPoint;
 
+import android.content.SharedPreferences;
+import android.provider.DocumentsContract;
+import java.io.OutputStream;
+
 public class CameraController {
 
     public interface CameraCallback {
@@ -228,6 +232,7 @@ public class CameraController {
 
     // ---------------- PHOTO CAPTURE ----------------
 
+
     public void capturePhoto(
             @NonNull Context context,
             @NonNull Executor executor,
@@ -241,7 +246,109 @@ public class CameraController {
         String fileName =
                 "CamCraft_" + System.currentTimeMillis() + ".jpg";
 
+        SharedPreferences preferences = context.getSharedPreferences(
+                "camcraft_settings",
+                Context.MODE_PRIVATE
+        );
+
+        String customLocation = preferences.getString(
+                "save_location",
+                null
+        );
+
+        // Custom SAF folder selected
+        if (customLocation != null) {
+
+            Uri treeUri = Uri.parse(customLocation);
+            Uri savedUri = null;
+
+            try {
+                String documentId = DocumentsContract.getTreeDocumentId(treeUri);
+
+                Uri parentDocumentUri =
+                        DocumentsContract.buildDocumentUriUsingTree(
+                                treeUri,
+                                documentId
+                        );
+
+                savedUri = DocumentsContract.createDocument(
+                        context.getContentResolver(),
+                        parentDocumentUri,
+                        "image/jpeg",
+                        fileName
+                );
+
+                if (savedUri == null) {
+                    callback.onError("Unable to create image in selected folder.");
+                    return;
+                }
+
+                OutputStream outputStream =
+                        context.getContentResolver().openOutputStream(savedUri);
+
+                if (outputStream == null) {
+                    context.getContentResolver().delete(savedUri, null, null);
+                    callback.onError("Unable to open selected folder.");
+                    return;
+                }
+
+                final Uri finalSavedUri = savedUri;
+
+                ImageCapture.OutputFileOptions outputOptions =
+                        new ImageCapture.OutputFileOptions.Builder(outputStream)
+                                .build();
+
+                imageCapture.takePicture(
+                        outputOptions,
+                        executor,
+                        new ImageCapture.OnImageSavedCallback() {
+
+                            @Override
+                            public void onImageSaved(
+                                    @NonNull ImageCapture.OutputFileResults results
+                            ) {
+                                callback.onSaved(finalSavedUri);
+                            }
+
+                            @Override
+                            public void onError(
+                                    @NonNull ImageCaptureException exception
+                            ) {
+                                context.getContentResolver().delete(
+                                        finalSavedUri, null, null
+                                );
+
+                                callback.onError(
+                                        exception.getMessage() != null
+                                                ? exception.getMessage()
+                                                : "Photo capture failed."
+                                );
+                            }
+                        }
+                );
+
+            } catch (Exception e) {
+
+                if (savedUri != null) {
+                    context.getContentResolver().delete(
+                            savedUri, null, null
+                    );
+                }
+
+                callback.onError(
+                        e.getMessage() != null
+                                ? e.getMessage()
+                                : "Unable to save photo."
+                );
+            }
+
+            return;
+        }
+
+        // Default MediaStore location: Pictures/CamCraft
+
         ContentValues values = new ContentValues();
+
         values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
         values.put(
@@ -272,16 +379,16 @@ public class CameraController {
                         Uri savedUri = results.getSavedUri();
 
                         if (savedUri == null) {
-                            callback.onError(
-                                    "Photo was saved without a URI."
-                            );
+                            callback.onError("Photo was saved without a URI.");
                             return;
                         }
 
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
                             ContentValues complete = new ContentValues();
                             complete.put(
-                                    MediaStore.Images.Media.IS_PENDING, 0
+                                    MediaStore.Images.Media.IS_PENDING,
+                                    0
                             );
 
                             context.getContentResolver().update(
@@ -308,6 +415,7 @@ public class CameraController {
                 }
         );
     }
+
 
     public void stopCamera() {
         startRequestId++;

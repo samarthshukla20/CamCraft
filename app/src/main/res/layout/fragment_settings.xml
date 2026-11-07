@@ -1,0 +1,167 @@
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textColor="#FFFFFF"
+            android:textSize="28sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Customize your camera experience"
+            android:textColor="#888888"
+            android:textSize="14sp"
+            android:layout_marginTop="6dp"/>
+
+        <!-- Storage -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="STORAGE"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="36dp"
+            android:layout_marginBottom="12dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#181818"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Save location"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/txtSaveLocation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Pictures/CamCraft"
+                android:textColor="#AAAAAA"
+                android:textSize="14sp"
+                android:layout_marginTop="6dp"/>
+
+            <TextView
+                android:id="@+id/btnChooseLocation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CHANGE FOLDER"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:padding="12dp"
+                android:layout_marginTop="12dp"
+                android:background="?attr/selectableItemBackground"/>
+
+        </LinearLayout>
+
+        <!-- Image Format -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IMAGE FORMAT"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"/>
+
+        <RadioGroup
+            android:id="@+id/radioImageFormat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#181818"
+            android:padding="16dp">
+
+            <RadioButton
+                android:id="@+id/radioJpeg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="JPEG"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFFFFF"
+                android:checked="true"/>
+
+            <RadioButton
+                android:id="@+id/radioPng"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="PNG"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFFFFF"/>
+
+        </RadioGroup>
+
+        <!-- Resolution -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="IMAGE RESOLUTION"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"/>
+
+        <RadioGroup
+            android:id="@+id/radioResolution"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#181818"
+            android:padding="16dp">
+
+            <RadioButton
+                android:id="@+id/radioHigh"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="High"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFFFFF"
+                android:checked="true"/>
+
+            <RadioButton
+                android:id="@+id/radioMedium"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Medium"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFFFFF"/>
+
+            <RadioButton
+                android:id="@+id/radioLow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Low"
+                android:textColor="#FFFFFF"
+                android:buttonTint="#FFFFFF"/>
+
+        </RadioGroup>
+
+    </LinearLayout>
+
+</ScrollView>

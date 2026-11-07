@@ -15,6 +15,18 @@
         app:layout_constraintBottom_toTopOf="@id/cameraControls"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
+    <ImageButton
+        android:id="@+id/btnSettings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_menu_preferences"
+        android:tint="#FFFFFF"
+        android:contentDescription="Open settings"
+        app:layout_constraintTop_toTopOf="@id/previewView"
+        app:layout_constraintEnd_toEndOf="@id/previewView" />
 
     <com.samarthshukla.camcraft.ui.camera.CameraGridView
         android:id="@+id/cameraGridOverlay"
@@ -253,5 +265,15 @@
             android:layout_weight="1" />
 
     </LinearLayout>
+
+    <View
+        android:id="@+id/captureFlash"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFFFFF"
+        android:alpha="0"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

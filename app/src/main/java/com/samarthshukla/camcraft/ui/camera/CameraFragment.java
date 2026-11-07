@@ -36,6 +36,10 @@ import com.bumptech.glide.Glide;
 import android.os.Handler;
 import android.os.Looper;
 
+import android.provider.DocumentsContract;
+
+import com.samarthshukla.camcraft.ui.settings.SettingsFragment;
+
 public class CameraFragment extends Fragment {
 
     private FragmentCameraBinding binding;
@@ -235,53 +239,180 @@ public class CameraFragment extends Fragment {
     private void loadLastPhotoThumbnail() {
         if (binding == null) return;
 
-        String[] projection = {
-                MediaStore.Images.Media._ID
-        };
+        try {
+            String customLocation = requireContext()
+                    .getSharedPreferences(
+                            "camcraft_settings",
+                            android.content.Context.MODE_PRIVATE
+                    )
+                    .getString("save_location", null);
 
-        String selection =
-                MediaStore.Images.Media.RELATIVE_PATH + "=?";
+            // Custom SAF folder selected
+            if (customLocation != null) {
 
-        String[] selectionArgs = {
-                "Pictures/CamCraft/"
-        };
+                Uri treeUri = Uri.parse(customLocation);
 
-        String sortOrder =
-                MediaStore.Images.Media.DATE_ADDED + " DESC";
+                String documentId =
+                        DocumentsContract.getTreeDocumentId(treeUri);
 
-        try (Cursor cursor = requireContext().getContentResolver().query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                selection,
-                selectionArgs,
-                sortOrder
-        )) {
-            if (cursor != null && cursor.moveToFirst()) {
+                Uri childrenUri =
+                        DocumentsContract.buildChildDocumentsUriUsingTree(
+                                treeUri,
+                                documentId
+                        );
 
-                long id = cursor.getLong(
-                        cursor.getColumnIndexOrThrow(
-                                MediaStore.Images.Media._ID
-                        )
-                );
+                String[] projection = {
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                        DocumentsContract.Document.COLUMN_MIME_TYPE,
+                        DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                };
 
-                Uri photoUri = Uri.withAppendedPath(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        String.valueOf(id)
-                );
+                Uri latestPhotoUri = null;
+                long latestDate = Long.MIN_VALUE;
 
-                Glide.with(this)
-                        .load(photoUri)
-                        .centerCrop()
-                        .into(binding.imgLastPhoto);
+                try (Cursor cursor = requireContext()
+                        .getContentResolver()
+                        .query(childrenUri, projection, null, null, null)) {
 
-            } else {
-                binding.imgLastPhoto.setImageResource(
-                        android.R.drawable.ic_menu_gallery
-                );
+                    if (cursor != null) {
+
+                        int idColumn = cursor.getColumnIndexOrThrow(
+                                DocumentsContract.Document.COLUMN_DOCUMENT_ID
+                        );
+
+                        int mimeColumn = cursor.getColumnIndexOrThrow(
+                                DocumentsContract.Document.COLUMN_MIME_TYPE
+                        );
+
+                        int dateColumn = cursor.getColumnIndexOrThrow(
+                                DocumentsContract.Document.COLUMN_LAST_MODIFIED
+                        );
+
+                        int nameColumn = cursor.getColumnIndexOrThrow(
+                                DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                        );
+
+                        while (cursor.moveToNext()) {
+
+                            String mimeType = cursor.getString(mimeColumn);
+
+                            if (mimeType == null ||
+                                    !mimeType.startsWith("image/")) {
+                                continue;
+                            }
+
+                            String childId = cursor.getString(idColumn);
+                            String fileName = cursor.getString(nameColumn);
+
+                            long modifiedDate = cursor.getLong(dateColumn);
+
+                            // Fallback: extract timestamp from CamCraft filename
+                            if (modifiedDate <= 0 && fileName != null) {
+                                try {
+                                    int start = fileName.indexOf("CamCraft_");
+                                    int end = fileName.lastIndexOf('.');
+
+                                    if (start >= 0 && end > start) {
+                                        modifiedDate = Long.parseLong(
+                                                fileName.substring(start + 9, end)
+                                        );
+                                    }
+                                } catch (NumberFormatException ignored) {
+                                }
+                            }
+
+                            // Normalize timestamps if provider returns seconds
+                            if (modifiedDate > 0 &&
+                                    modifiedDate < 100000000000L) {
+                                modifiedDate *= 1000L;
+                            }
+
+                            if (modifiedDate > latestDate) {
+                                latestDate = modifiedDate;
+
+                                latestPhotoUri =
+                                        DocumentsContract.buildDocumentUriUsingTree(
+                                                treeUri,
+                                                childId
+                                        );
+                            }
+                        }
+                    }
+                }
+
+                if (latestPhotoUri != null) {
+                    Glide.with(this)
+                            .load(latestPhotoUri)
+                            .centerCrop()
+                            .into(binding.imgLastPhoto);
+                } else {
+                    binding.imgLastPhoto.setImageResource(
+                            android.R.drawable.ic_menu_gallery
+                    );
+                }
+
+                return;
+            }
+
+            // Default MediaStore folder
+            String[] projection = {
+                    MediaStore.Images.Media._ID
+            };
+
+            String selection =
+                    MediaStore.Images.Media.RELATIVE_PATH + "=?";
+
+            String[] selectionArgs = {
+                    "Pictures/CamCraft/"
+            };
+
+            String sortOrder =
+                    MediaStore.Images.Media.DATE_ADDED + " DESC";
+
+            try (Cursor cursor = requireContext()
+                    .getContentResolver()
+                    .query(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            projection,
+                            selection,
+                            selectionArgs,
+                            sortOrder
+                    )) {
+
+                if (cursor != null && cursor.moveToFirst()) {
+
+                    long id = cursor.getLong(
+                            cursor.getColumnIndexOrThrow(
+                                    MediaStore.Images.Media._ID
+                            )
+                    );
+
+                    Uri photoUri = Uri.withAppendedPath(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            String.valueOf(id)
+                    );
+
+                    Glide.with(this)
+                            .load(photoUri)
+                            .centerCrop()
+                            .into(binding.imgLastPhoto);
+
+                } else {
+                    binding.imgLastPhoto.setImageResource(
+                            android.R.drawable.ic_menu_gallery
+                    );
+                }
             }
 
         } catch (Exception e) {
             e.printStackTrace();
+
+            if (binding != null) {
+                binding.imgLastPhoto.setImageResource(
+                        android.R.drawable.ic_menu_gallery
+                );
+            }
         }
     }
 
@@ -336,6 +467,14 @@ public class CameraFragment extends Fragment {
         binding.btnCancelCountdown.setOnClickListener(v ->
                 cancelCountdown()
         );
+
+        binding.btnSettings.setOnClickListener(v -> {
+            getParentFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, new SettingsFragment())
+                    .addToBackStack("settings")
+                    .commit();
+        });
     }
 
     private void openGallery() {
@@ -727,9 +866,11 @@ public class CameraFragment extends Fragment {
                         if (binding == null) return;
 
                         binding.btnCapture.setEnabled(true);
+
+                        playCaptureFlash();
                         loadLastPhotoThumbnail();
 
-                        showMessage("Photo saved to Pictures/CamCraft");
+                        showMessage("Photo captured successfully!");
                     }
 
                     @Override
@@ -741,6 +882,33 @@ public class CameraFragment extends Fragment {
                     }
                 }
         );
+    }
+
+    private void playCaptureFlash() {
+        if (binding == null) return;
+
+        View flash = binding.captureFlash;
+
+        flash.animate().cancel();
+
+        flash.setVisibility(View.VISIBLE);
+        flash.setAlpha(0f);
+
+        flash.animate()
+                .alpha(0.85f)
+                .setDuration(10)
+                .withEndAction(() ->
+                        flash.animate()
+                                .alpha(0f)
+                                .setDuration(150)
+                                .withEndAction(() -> {
+                                    if (binding != null) {
+                                        flash.setVisibility(View.GONE);
+                                    }
+                                })
+                                .start()
+                )
+                .start();
     }
 
     // ---------------- UI HELPERS ----------------
