@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:layout_margin="12dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@android:drawable/ic_media_previous"
+        android:src="@drawable/ic_back"
         android:tint="#FFFFFF"
         android:contentDescription="Back"
         app:layout_constraintTop_toTopOf="parent"

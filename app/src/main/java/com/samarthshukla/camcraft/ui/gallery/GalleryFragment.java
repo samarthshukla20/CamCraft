@@ -84,7 +84,7 @@ public class GalleryFragment extends Fragment {
 
             boolean empty = photos == null || photos.isEmpty();
 
-            binding.txtEmpty.setVisibility(
+            binding.emptyGalleryContainer.setVisibility(
                     empty ? View.VISIBLE : View.GONE
             );
 

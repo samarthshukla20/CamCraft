@@ -66,9 +66,9 @@ public class CameraFragment extends Fragment {
 
     private Runnable countdownRunnable;
     private int remainingSeconds = 0;
-
-
     private ScaleGestureDetector scaleGestureDetector;
+    private boolean isZoomPanelOpen = false;
+    private boolean isExposurePanelOpen = false;
 
     private final ActivityResultLauncher<String> cameraPermissionLauncher =
             registerForActivityResult(
@@ -475,6 +475,10 @@ public class CameraFragment extends Fragment {
                     .addToBackStack("settings")
                     .commit();
         });
+
+        binding.btnZoom.setOnClickListener(v -> toggleZoomPanel());
+
+        binding.btnExposure.setOnClickListener(v -> toggleExposurePanel());
     }
 
     private void openGallery() {
@@ -486,6 +490,42 @@ public class CameraFragment extends Fragment {
                 .replace(R.id.fragmentContainer, new GalleryFragment())
                 .addToBackStack("gallery")
                 .commit();
+    }
+
+    private void toggleZoomPanel() {
+        if (binding == null) return;
+
+        isZoomPanelOpen = !isZoomPanelOpen;
+
+        // Close exposure panel
+        isExposurePanelOpen = false;
+        binding.exposureControls.setVisibility(View.GONE);
+
+        // Toggle zoom panel
+        binding.zoomControls.setVisibility(
+                isZoomPanelOpen ? View.VISIBLE : View.GONE
+        );
+
+        binding.btnZoom.setAlpha(isZoomPanelOpen ? 1f : 0.65f);
+        binding.btnExposure.setAlpha(0.65f);
+    }
+
+    private void toggleExposurePanel() {
+        if (binding == null) return;
+
+        isExposurePanelOpen = !isExposurePanelOpen;
+
+        // Close zoom panel
+        isZoomPanelOpen = false;
+        binding.zoomControls.setVisibility(View.GONE);
+
+        // Toggle exposure panel
+        binding.exposureControls.setVisibility(
+                isExposurePanelOpen ? View.VISIBLE : View.GONE
+        );
+
+        binding.btnExposure.setAlpha(isExposurePanelOpen ? 1f : 0.65f);
+        binding.btnZoom.setAlpha(0.65f);
     }
 
 
@@ -856,6 +896,9 @@ public class CameraFragment extends Fragment {
 
         binding.btnCapture.setEnabled(false);
 
+        // Give immediate shutter feedback.
+        playCaptureFlash();
+
         cameraController.capturePhoto(
                 requireContext(),
                 ContextCompat.getMainExecutor(requireContext()),
@@ -866,10 +909,7 @@ public class CameraFragment extends Fragment {
                         if (binding == null) return;
 
                         binding.btnCapture.setEnabled(true);
-
-                        playCaptureFlash();
                         loadLastPhotoThumbnail();
-
                         showMessage("Photo captured successfully!");
                     }
 
@@ -912,28 +952,36 @@ public class CameraFragment extends Fragment {
     }
 
     // ---------------- UI HELPERS ----------------
-
     private void updateFlashLabel(int mode) {
         if (binding == null) return;
 
         String label;
+        int icon;
 
         switch (mode) {
             case CameraUiState.FLASH_ON:
-                label = "Flash: ON";
+                label = "ON";
+                icon = R.drawable.ic_zap;
                 break;
 
             case CameraUiState.FLASH_OFF:
-                label = "Flash: OFF";
+                label = "OFF";
+                icon = R.drawable.ic_zap_off;
                 break;
 
             default:
-                label = "Flash: AUTO";
+                label = "AUTO";
+                icon = R.drawable.ic_zap_auto;
                 break;
         }
 
-        binding.btnFlash.setContentDescription(label);
+        binding.btnFlash.setImageResource(icon);
+        binding.btnFlash.setContentDescription("Flash: " + label);
+        binding.btnFlash.setAlpha(
+                mode == CameraUiState.FLASH_OFF ? 0.55f : 1f
+        );
     }
+
 
     private void showMessage(String message) {
         if (getContext() != null) {
@@ -957,6 +1005,8 @@ public class CameraFragment extends Fragment {
         lastBoundFrontCamera = null;
         cancelCountdown();
         timerHandler.removeCallbacksAndMessages(null);
+        isZoomPanelOpen = false;
+        isExposurePanelOpen = false;
         binding = null;
 
         super.onDestroyView();
