@@ -50,12 +50,12 @@
         android:gravity="center"
         android:orientation="horizontal"
         android:background="#171717"
-        android:paddingHorizontal="28dp"
+        android:paddingHorizontal="20dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <ImageButton
             android:id="@+id/btnDeletePhoto"
-            android:layout_width="52dp"
+            android:layout_width="48dp"
             android:layout_height="52dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_delete"
@@ -69,7 +69,7 @@
 
         <ImageButton
             android:id="@+id/btnEditPhoto"
-            android:layout_width="52dp"
+            android:layout_width="48dp"
             android:layout_height="52dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_edit"
@@ -82,8 +82,22 @@
             android:layout_weight="1" />
 
         <ImageButton
+            android:id="@+id/btnPhotoDetails"
+            android:layout_width="48dp"
+            android:layout_height="52dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_info_details"
+            android:tint="#FFFFFF"
+            android:contentDescription="Photo details" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
             android:id="@+id/btnSharePhoto"
-            android:layout_width="52dp"
+            android:layout_width="48dp"
             android:layout_height="52dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_share"

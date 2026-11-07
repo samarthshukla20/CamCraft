@@ -25,6 +25,26 @@ import java.util.ArrayList;
 import android.content.IntentSender;
 import android.provider.DocumentsContract;
 
+import android.view.LayoutInflater;
+import android.widget.TextView;
+
+import com.samarthshukla.camcraft.data.repository.PhotoDetailsReader;
+
+import java.util.Map;
+
+import android.graphics.drawable.ColorDrawable;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
 public class PhotoViewerFragment extends Fragment {
 
     private FragmentPhotoViewerBinding binding;
@@ -101,6 +121,10 @@ public class PhotoViewerFragment extends Fragment {
 
         binding.btnSharePhoto.setOnClickListener(v ->
                 sharePhoto()
+        );
+
+        binding.btnPhotoDetails.setOnClickListener(v ->
+                showPhotoDetails()
         );
 
         binding.fullPhoto.setOnTouchListener((v, event) -> {
@@ -185,6 +209,199 @@ public class PhotoViewerFragment extends Fragment {
         binding.txtPhotoPosition.setText(
                 (currentIndex + 1) + " / " + photoUris.size()
         );
+    }
+
+    private void showPhotoDetails() {
+        if (photoUris == null || photoUris.isEmpty()) return;
+
+        Uri uri = Uri.parse(photoUris.get(currentIndex));
+
+        Map<String, String> details =
+                PhotoDetailsReader.read(requireContext(), uri);
+
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_photo_details, null);
+
+        LinearLayout container =
+                dialogView.findViewById(R.id.detailsContainer);
+
+        TextView noDetails =
+                dialogView.findViewById(R.id.txtNoDetails);
+
+        String[][] sections = {
+                {"FILE INFORMATION", "📁",
+                        "File name", "File size", "Dimensions"},
+
+                {"CAMERA INFORMATION", "📷",
+                        "Camera make", "Camera model", "Focal length"},
+
+                {"EXPOSURE SETTINGS", "☀",
+                        "ISO", "Shutter speed", "Aperture",
+                        "Flash", "White balance"},
+
+                {"DATE & LOCATION", "📍",
+                        "Date captured", "GPS location"}
+        };
+
+        int displayedSections = 0;
+
+        for (String[] section : sections) {
+
+            LinearLayout rows = new LinearLayout(requireContext());
+            rows.setOrientation(LinearLayout.VERTICAL);
+
+            int rowCount = 0;
+
+            for (int i = 2; i < section.length; i++) {
+
+                String key = section[i];
+                String value = details.get(key);
+
+                if (value == null || value.trim().isEmpty()) {
+                    continue;
+                }
+
+                if (rowCount > 0) {
+                    View divider = new View(requireContext());
+
+                    divider.setBackgroundColor(
+                            Color.parseColor("#383838")
+                    );
+
+                    LinearLayout.LayoutParams dividerParams =
+                            new LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    1
+                            );
+
+                    dividerParams.setMargins(0, 10, 0, 10);
+                    rows.addView(divider, dividerParams);
+                }
+
+                addDetailRow(rows, key, value,
+                        "GPS location".equals(key));
+
+                rowCount++;
+            }
+
+            if (rowCount == 0) continue;
+
+            View card = LayoutInflater.from(requireContext())
+                    .inflate(R.layout.item_photo_detail_card,
+                            container, false);
+
+            TextView icon = card.findViewById(R.id.txtSectionIcon);
+            TextView title = card.findViewById(R.id.txtSectionTitle);
+            LinearLayout detailRows = card.findViewById(R.id.detailRows);
+
+            icon.setText(section[1]);
+            title.setText(section[0]);
+
+            detailRows.addView(rows);
+
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(Color.parseColor("#202020"));
+            background.setCornerRadius(
+                    16 * getResources().getDisplayMetrics().density
+            );
+
+            card.setBackground(background);
+
+            container.addView(card);
+
+            displayedSections++;
+        }
+
+        noDetails.setVisibility(
+                displayedSections == 0 ? View.VISIBLE : View.GONE
+        );
+
+        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+                .setTitle("Photo Details")
+                .setView(dialogView)
+                .setPositiveButton("Close", null)
+                .create();
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(
+                    new GradientDrawable() {{
+                        setColor(Color.parseColor("#111111"));
+                        setCornerRadius(20);
+                    }}
+            );
+        }
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(Color.WHITE);
+    }
+
+    private void addDetailRow(
+            LinearLayout container,
+            String label,
+            String value,
+            boolean isGps
+    ) {
+        LinearLayout row = new LinearLayout(requireContext());
+
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView labelView = new TextView(requireContext());
+        labelView.setText(label);
+        labelView.setTextColor(Color.parseColor("#AAAAAA"));
+        labelView.setTextSize(13);
+
+        LinearLayout.LayoutParams labelParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                );
+
+        row.addView(labelView, labelParams);
+
+        TextView valueView = new TextView(requireContext());
+        valueView.setText(value);
+        valueView.setTextColor(Color.WHITE);
+        valueView.setTextSize(13);
+        valueView.setTypeface(null, Typeface.BOLD);
+        valueView.setGravity(Gravity.END);
+
+        row.addView(valueView);
+
+        if (isGps) {
+            TextView copyButton = new TextView(requireContext());
+
+            copyButton.setText("COPY");
+            copyButton.setTextColor(Color.parseColor("#80B9FF"));
+            copyButton.setTextSize(11);
+            copyButton.setTypeface(null, Typeface.BOLD);
+            copyButton.setPadding(12, 8, 0, 8);
+
+            copyButton.setOnClickListener(v -> {
+                ClipboardManager clipboard =
+                        (ClipboardManager) requireContext()
+                                .getSystemService(Context.CLIPBOARD_SERVICE);
+
+                if (clipboard != null) {
+                    clipboard.setPrimaryClip(
+                            ClipData.newPlainText("GPS Coordinates", value)
+                    );
+
+                    Toast.makeText(
+                            requireContext(),
+                            "GPS coordinates copied",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
+            });
+
+            row.addView(copyButton);
+        }
+
+        container.addView(row);
     }
 
     // ---------------- DELETE ----------------
