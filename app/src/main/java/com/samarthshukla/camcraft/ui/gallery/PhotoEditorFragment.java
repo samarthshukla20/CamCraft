@@ -1,6 +1,7 @@
 package com.samarthshukla.camcraft.ui.gallery;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -12,6 +13,8 @@ import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.SeekBar;
@@ -33,6 +36,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import androidx.exifinterface.media.ExifInterface;
+import android.graphics.Matrix;
 
 public class PhotoEditorFragment extends Fragment {
 
@@ -217,6 +223,83 @@ public class PhotoEditorFragment extends Fragment {
         selectedFilter = filter;
         updateFilterSelection();
         applyAdjustments();
+    }
+
+    private Bitmap rotateBitmapFromExif(
+            Bitmap bitmap,
+            Uri uri,
+            Context context
+    ) throws IOException {
+
+        ExifInterface exif;
+
+        try (InputStream input = context.getContentResolver()
+                .openInputStream(uri)) {
+
+            if (input == null) {
+                return bitmap;
+            }
+
+            exif = new ExifInterface(input);
+        }
+
+        int orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+        );
+
+        Matrix matrix = new Matrix();
+
+        switch (orientation) {
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                matrix.postRotate(90);
+                break;
+
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                matrix.postRotate(180);
+                break;
+
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.postRotate(270);
+                break;
+
+            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
+                matrix.preScale(-1, 1);
+                break;
+
+            case ExifInterface.ORIENTATION_FLIP_VERTICAL:
+                matrix.preScale(1, -1);
+                break;
+
+            case ExifInterface.ORIENTATION_TRANSPOSE:
+                matrix.setRotate(90);
+                matrix.postScale(-1, 1);
+                break;
+
+            case ExifInterface.ORIENTATION_TRANSVERSE:
+                matrix.setRotate(-90);
+                matrix.postScale(-1, 1);
+                break;
+
+            default:
+                return bitmap;
+        }
+
+        Bitmap rotated = Bitmap.createBitmap(
+                bitmap,
+                0,
+                0,
+                bitmap.getWidth(),
+                bitmap.getHeight(),
+                matrix,
+                true
+        );
+
+        if (rotated != bitmap) {
+            bitmap.recycle();
+        }
+
+        return rotated;
     }
 
     private void updateFilterSelection() {
@@ -437,6 +520,7 @@ public class PhotoEditorFragment extends Fragment {
                 .start(requireContext(), cropLauncher);
     }
 
+
     private void saveEditedPhoto() {
 
         if (photoUri == null || isSaving || binding == null) return;
@@ -444,9 +528,12 @@ public class PhotoEditorFragment extends Fragment {
         isSaving = true;
         binding.btnSavePhoto.setEnabled(false);
 
-        // Capture editing state before starting background work.
-        final android.content.Context context = requireContext();
+        // Capture required state before starting background work.
+        final Context context = requireContext().getApplicationContext();
+        final Uri sourceUri = photoUri;
         final ColorMatrix combinedMatrix = buildCombinedColorMatrix();
+
+        final Handler mainHandler = new Handler(Looper.getMainLooper());
 
         new Thread(() -> {
 
@@ -461,8 +548,9 @@ public class PhotoEditorFragment extends Fragment {
 
                 decodeOptions.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
+                // Decode original image.
                 try (InputStream input = context.getContentResolver()
-                        .openInputStream(photoUri)) {
+                        .openInputStream(sourceUri)) {
 
                     if (input == null) {
                         throw new IOException("Unable to open source image.");
@@ -477,6 +565,10 @@ public class PhotoEditorFragment extends Fragment {
                     throw new IOException("Unable to decode image.");
                 }
 
+                // Correct image orientation using EXIF metadata.
+                original = rotateBitmapFromExif(original, sourceUri, context);
+
+                // Create output bitmap.
                 edited = Bitmap.createBitmap(
                         original.getWidth(),
                         original.getHeight(),
@@ -486,14 +578,16 @@ public class PhotoEditorFragment extends Fragment {
                 Canvas canvas = new Canvas(edited);
 
                 Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                paint.setFilterBitmap(true);
 
-                // Apply the SAME combined matrix used by the preview.
+                // Apply the same matrix used by the editor preview.
                 paint.setColorFilter(
                         new ColorMatrixColorFilter(combinedMatrix)
                 );
 
                 canvas.drawBitmap(original, 0, 0, paint);
 
+                // Prepare MediaStore entry.
                 ContentValues values = new ContentValues();
 
                 values.put(
@@ -527,6 +621,7 @@ public class PhotoEditorFragment extends Fragment {
                     throw new IOException("Unable to create output image.");
                 }
 
+                // Write edited bitmap.
                 try (OutputStream output = context.getContentResolver()
                         .openOutputStream(savedUri)) {
 
@@ -543,6 +638,7 @@ public class PhotoEditorFragment extends Fragment {
                     }
                 }
 
+                // Make image visible in the gallery.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
                     ContentValues completed = new ContentValues();
@@ -583,19 +679,20 @@ public class PhotoEditorFragment extends Fragment {
                     ? "Edited photo saved successfully!"
                     : "Failed to save photo: " + errorMessage;
 
-            requireActivity().runOnUiThread(() -> {
+            // Return to the main thread safely.
+            mainHandler.post(() -> {
 
                 isSaving = false;
 
                 if (binding != null) {
                     binding.btnSavePhoto.setEnabled(true);
+                    showMessage(resultMessage);
                 }
-
-                showMessage(resultMessage);
             });
 
         }).start();
     }
+
 
     private void showMessage(String message) {
 

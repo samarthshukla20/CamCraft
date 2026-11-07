@@ -53,6 +53,7 @@ public class CameraFragment extends Fragment {
     private boolean updatingZoomSlider = false;
     private boolean updatingExposureSlider = false;
     private boolean isScaling = false;
+    private boolean isGridEnabled = false;
 
     private ScaleGestureDetector scaleGestureDetector;
 
@@ -186,6 +187,18 @@ public class CameraFragment extends Fragment {
 
             cameraController.setExposureIndex(0);
             updateExposureProgress(0);
+        });
+
+        binding.btnGrid.setOnClickListener(v -> {
+            isGridEnabled = !isGridEnabled;
+
+            binding.cameraGridOverlay.setVisibility(
+                    isGridEnabled ? View.VISIBLE : View.GONE
+            );
+
+            binding.btnGrid.setContentDescription(
+                    isGridEnabled ? "Disable camera grid" : "Enable camera grid"
+            );
         });
     }
 
