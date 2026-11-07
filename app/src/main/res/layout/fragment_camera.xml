@@ -28,6 +28,42 @@
         app:layout_constraintStart_toStartOf="@id/previewView"
         app:layout_constraintEnd_toEndOf="@id/previewView" />
 
+    <TextView
+        android:id="@+id/txtCountdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="3"
+        android:textColor="#FFFFFF"
+        android:textSize="88sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        android:shadowColor="#99000000"
+        android:shadowRadius="12"
+        android:shadowDx="2"
+        android:shadowDy="2"
+        app:layout_constraintTop_toTopOf="@id/previewView"
+        app:layout_constraintBottom_toBottomOf="@id/previewView"
+        app:layout_constraintStart_toStartOf="@id/previewView"
+        app:layout_constraintEnd_toEndOf="@id/previewView" />
+
+    <TextView
+        android:id="@+id/btnCancelCountdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CANCEL"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:padding="12dp"
+        android:background="?attr/selectableItemBackground"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintTop_toBottomOf="@id/txtCountdown"
+        app:layout_constraintStart_toStartOf="@id/txtCountdown"
+        app:layout_constraintEnd_toEndOf="@id/txtCountdown"
+        android:layout_marginTop="12dp" />
+
     <!-- Focus indicator -->
     <View
         android:id="@+id/focusIndicator"
@@ -192,6 +228,15 @@
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btnTimer"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Camera timer off"
+            android:src="@android:drawable/ic_menu_recent_history"
+            android:tint="#FFFFFF" />
 
         <ImageButton
             android:id="@+id/btnSwitchCamera"

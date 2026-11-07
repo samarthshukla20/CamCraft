@@ -33,6 +33,9 @@ import android.database.Cursor;
 import android.provider.MediaStore;
 import com.bumptech.glide.Glide;
 
+import android.os.Handler;
+import android.os.Looper;
+
 public class CameraFragment extends Fragment {
 
     private FragmentCameraBinding binding;
@@ -49,11 +52,17 @@ public class CameraFragment extends Fragment {
     private int minExposure = 0;
     private int maxExposure = 0;
     private float exposureStep = 0f;
-
     private boolean updatingZoomSlider = false;
     private boolean updatingExposureSlider = false;
     private boolean isScaling = false;
     private boolean isGridEnabled = false;
+    private int selectedTimerSeconds = 0;
+    private final android.os.Handler timerHandler =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private Runnable countdownRunnable;
+    private int remainingSeconds = 0;
+
 
     private ScaleGestureDetector scaleGestureDetector;
 
@@ -106,6 +115,120 @@ public class CameraFragment extends Fragment {
         observeState();
 
         requestCameraPermissionIfNeeded();
+    }
+
+    private void showTimerMenu() {
+
+        if (binding == null) return;
+
+        android.widget.PopupMenu popup =
+                new android.widget.PopupMenu(
+                        requireContext(),
+                        binding.btnTimer
+                );
+
+        popup.getMenu().add("Off");
+        popup.getMenu().add("3 seconds");
+        popup.getMenu().add("5 seconds");
+        popup.getMenu().add("10 seconds");
+
+        popup.setOnMenuItemClickListener(item -> {
+
+            String option = item.getTitle().toString();
+
+            switch (option) {
+                case "Off":
+                    selectedTimerSeconds = 0;
+                    break;
+
+                case "3 seconds":
+                    selectedTimerSeconds = 3;
+                    break;
+
+                case "5 seconds":
+                    selectedTimerSeconds = 5;
+                    break;
+
+                case "10 seconds":
+                    selectedTimerSeconds = 10;
+                    break;
+            }
+
+            binding.btnTimer.setContentDescription(
+                    "Camera timer " +
+                            (selectedTimerSeconds == 0
+                                    ? "off"
+                                    : selectedTimerSeconds + " seconds")
+            );
+
+            return true;
+        });
+
+        popup.show();
+    }
+
+    private void startCountdown() {
+
+        if (countdownRunnable != null) return;
+        if (binding == null || !cameraReady) return;
+
+        remainingSeconds = selectedTimerSeconds;
+
+        binding.btnCapture.setEnabled(false);
+        binding.txtCountdown.setVisibility(View.VISIBLE);
+        binding.btnCancelCountdown.setVisibility(View.VISIBLE);
+
+        countdownRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (binding == null) return;
+
+                if (remainingSeconds > 0) {
+                    binding.txtCountdown.setText(
+                            String.valueOf(remainingSeconds)
+                    );
+
+                    binding.txtCountdown.setScaleX(1.3f);
+                    binding.txtCountdown.setScaleY(1.3f);
+
+                    binding.txtCountdown.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .setDuration(300)
+                            .start();
+
+                    remainingSeconds--;
+                    timerHandler.postDelayed(this, 1000);
+
+                } else {
+                    binding.txtCountdown.setVisibility(View.GONE);
+                    binding.btnCancelCountdown.setVisibility(View.GONE);
+                    countdownRunnable = null;
+                    capturePhoto();
+                }
+            }
+        };
+
+        countdownRunnable.run();
+    }
+
+    private void cancelCountdown() {
+        if (countdownRunnable != null) {
+            timerHandler.removeCallbacks(countdownRunnable);
+            countdownRunnable = null;
+        }
+
+        remainingSeconds = 0;
+
+        if (binding != null) {
+            binding.txtCountdown.animate().cancel();
+            binding.txtCountdown.setVisibility(View.GONE);
+            binding.txtCountdown.setScaleX(1f);
+            binding.txtCountdown.setScaleY(1f);
+
+            binding.btnCancelCountdown.setVisibility(View.GONE);
+            binding.btnCapture.setEnabled(cameraReady);
+        }
     }
 
 
@@ -172,13 +295,10 @@ public class CameraFragment extends Fragment {
                 viewModel.cycleFlash()
         );
 
-        binding.btnSwitchCamera.setOnClickListener(v ->
-                viewModel.toggleCamera()
-        );
-
-        binding.btnCapture.setOnClickListener(v ->
-                capturePhoto()
-        );
+        binding.btnSwitchCamera.setOnClickListener(v -> {
+            cancelCountdown();
+            viewModel.toggleCamera();
+        });
 
         binding.btnGallery.setOnClickListener(v -> openGallery());
 
@@ -200,6 +320,22 @@ public class CameraFragment extends Fragment {
                     isGridEnabled ? "Disable camera grid" : "Enable camera grid"
             );
         });
+
+        binding.btnCapture.setOnClickListener(v -> {
+            if (!cameraReady) return;
+
+            if (selectedTimerSeconds > 0) {
+                startCountdown();
+            } else {
+                capturePhoto();
+            }
+        });
+
+        binding.btnTimer.setOnClickListener(v -> showTimerMenu());
+
+        binding.btnCancelCountdown.setOnClickListener(v ->
+                cancelCountdown()
+        );
     }
 
     private void openGallery() {
@@ -651,6 +787,8 @@ public class CameraFragment extends Fragment {
 
         cameraReady = false;
         lastBoundFrontCamera = null;
+        cancelCountdown();
+        timerHandler.removeCallbacksAndMessages(null);
         binding = null;
 
         super.onDestroyView();
