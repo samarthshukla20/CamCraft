@@ -47,6 +47,16 @@ import java.util.concurrent.Executors;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.location.Location;
+
+import androidx.core.content.ContextCompat;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 public class CameraController {
 
@@ -272,6 +282,91 @@ public class CameraController {
                 .setExposureCompensationIndex(safeIndex);
     }
 
+    private interface PhotoLocationCallback {
+        void onLocationReady(Location location);
+    }
+
+    private void getCaptureLocation(
+            Context context,
+            PhotoLocationCallback callback
+    ) {
+        SharedPreferences preferences = context.getSharedPreferences(
+                "camcraft_settings",
+                Context.MODE_PRIVATE
+        );
+
+        boolean geotaggingEnabled = preferences.getBoolean(
+                "geotagging_enabled",
+                false
+        );
+
+        if (!geotaggingEnabled) {
+            callback.onLocationReady(null);
+            return;
+        }
+
+        boolean hasFinePermission =
+                ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED;
+
+        boolean hasCoarsePermission =
+                ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED;
+
+        if (!hasFinePermission && !hasCoarsePermission) {
+            callback.onLocationReady(null);
+            return;
+        }
+
+        FusedLocationProviderClient locationClient =
+                LocationServices.getFusedLocationProviderClient(context);
+
+        try {
+            CancellationTokenSource cancellationTokenSource =
+                    new CancellationTokenSource();
+
+            locationClient.getCurrentLocation(
+                    Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                    cancellationTokenSource.getToken()
+            ).addOnSuccessListener(location -> {
+
+                if (location != null) {
+                    callback.onLocationReady(location);
+                } else {
+                    // Fall back to the last known location.
+                    locationClient.getLastLocation()
+                            .addOnCompleteListener(task -> {
+                                callback.onLocationReady(
+                                        task.isSuccessful()
+                                                ? task.getResult()
+                                                : null
+                                );
+                            });
+                }
+
+            }).addOnFailureListener(exception -> {
+
+                // Try the last known location if fresh retrieval fails.
+                locationClient.getLastLocation()
+                        .addOnCompleteListener(task -> {
+                            callback.onLocationReady(
+                                    task.isSuccessful()
+                                            ? task.getResult()
+                                            : null
+                            );
+                        });
+
+            });
+
+        } catch (SecurityException e) {
+            callback.onLocationReady(null);
+        }
+    }
+
     // ---------------- PHOTO CAPTURE ----------------
 
 
@@ -304,33 +399,39 @@ public class CameraController {
                     public void onImageSaved(
                             @NonNull ImageCapture.OutputFileResults results
                     ) {
-                        imageProcessor.execute(() -> {
-                            try {
-                                Uri savedUri = processAndSavePhoto(
-                                        context,
-                                        sourceFile
-                                );
+                        getCaptureLocation(context, location -> {
 
-                                executor.execute(() ->
-                                        callback.onSaved(savedUri)
-                                );
+                            imageProcessor.execute(() -> {
+                                try {
+                                    Uri savedUri = processAndSavePhoto(
+                                            context,
+                                            sourceFile,
+                                            null,
+                                            location
+                                    );
 
-                            } catch (Exception e) {
-                                e.printStackTrace();
+                                    executor.execute(() ->
+                                            callback.onSaved(savedUri)
+                                    );
 
-                                executor.execute(() ->
-                                        callback.onError(
-                                                e.getMessage() != null
-                                                        ? e.getMessage()
-                                                        : "Unable to process photo."
-                                        )
-                                );
+                                } catch (Exception e) {
+                                    e.printStackTrace();
 
-                            } finally {
-                                if (sourceFile.exists()) {
-                                    sourceFile.delete();
+                                    executor.execute(() ->
+                                            callback.onError(
+                                                    e.getMessage() != null
+                                                            ? e.getMessage()
+                                                            : "Unable to process photo."
+                                            )
+                                    );
+
+                                } finally {
+                                    if (sourceFile.exists()) {
+                                        sourceFile.delete();
+                                    }
                                 }
-                            }
+                            });
+
                         });
                     }
 
@@ -417,51 +518,57 @@ public class CameraController {
                             captureNextBurstPhoto();
                         }
 
-                        // Process and save the previous photo independently.
-                        imageProcessor.execute(() -> {
-                            try {
-                                Uri savedUri = processAndSavePhoto(
-                                        burstContext,
-                                        sourceFile,
-                                        currentBurstId
-                                );
+                        // Retrieve a location independently for each burst photo.
+                        final String photoBurstId = currentBurstId;
+                        final Context photoContext = burstContext;
 
-                                burstHandler.post(() -> {
-                                    burstPendingSaves--;
-                                    burstSavedCount++;
+                        getCaptureLocation(photoContext, location -> {
+                            imageProcessor.execute(() -> {
+                                try {
+                                    Uri savedUri = processAndSavePhoto(
+                                            photoContext,
+                                            sourceFile,
+                                            photoBurstId,
+                                            location
+                                    );
 
-                                    if (burstCallback != null) {
-                                        burstCallback.onPhotoSaved(
-                                                savedUri,
-                                                burstSavedCount
-                                        );
+                                    burstHandler.post(() -> {
+                                        burstPendingSaves--;
+                                        burstSavedCount++;
+
+                                        if (burstCallback != null) {
+                                            burstCallback.onPhotoSaved(
+                                                    savedUri,
+                                                    burstSavedCount
+                                            );
+                                        }
+
+                                        finishBurstIfReady();
+                                    });
+
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+
+                                    burstHandler.post(() -> {
+                                        burstPendingSaves--;
+
+                                        if (burstCallback != null) {
+                                            burstCallback.onError(
+                                                    e.getMessage() != null
+                                                            ? e.getMessage()
+                                                            : "Unable to process burst photo."
+                                            );
+                                        }
+
+                                        finishBurstIfReady();
+                                    });
+
+                                } finally {
+                                    if (sourceFile.exists()) {
+                                        sourceFile.delete();
                                     }
-
-                                    finishBurstIfReady();
-                                });
-
-                            } catch (Exception e) {
-                                e.printStackTrace();
-
-                                burstHandler.post(() -> {
-                                    burstPendingSaves--;
-
-                                    if (burstCallback != null) {
-                                        burstCallback.onError(
-                                                e.getMessage() != null
-                                                        ? e.getMessage()
-                                                        : "Unable to process burst photo."
-                                        );
-                                    }
-
-                                    finishBurstIfReady();
-                                });
-
-                            } finally {
-                                if (sourceFile.exists()) {
-                                    sourceFile.delete();
                                 }
-                            }
+                            });
                         });
                     }
 
@@ -530,13 +637,22 @@ public class CameraController {
             Context context,
             File sourceFile
     ) throws Exception {
-        return processAndSavePhoto(context, sourceFile, null);
+        return processAndSavePhoto(context, sourceFile, null, null);
     }
 
     private Uri processAndSavePhoto(
             Context context,
             File sourceFile,
             String burstId
+    ) throws Exception {
+        return processAndSavePhoto(context, sourceFile, burstId, null);
+    }
+
+    private Uri processAndSavePhoto(
+            Context context,
+            File sourceFile,
+            String burstId,
+            Location location
     ) throws Exception {
 
         SharedPreferences preferences = context.getSharedPreferences(
@@ -701,6 +817,21 @@ public class CameraController {
                 }
 
                 bitmap.recycle();
+            }
+        }
+
+        // Embed GPS metadata in JPEG files after any image conversion/scaling.
+        // PNG files continue to save normally without EXIF GPS metadata.
+        if (!isPng && location != null) {
+            try {
+                ExifInterface exif = new ExifInterface(
+                        finalFile.getAbsolutePath()
+                );
+                exif.setGpsInfo(location);
+                exif.saveAttributes();
+            } catch (Exception e) {
+                // Metadata failure must not prevent the photo from being saved.
+                e.printStackTrace();
             }
         }
 

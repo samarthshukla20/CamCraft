@@ -89,4 +89,7 @@ dependencies {
     implementation 'androidx.exifinterface:exifinterface:1.4.2'
 
     implementation 'androidx.exifinterface:exifinterface:1.4.2'
+
+    // GPS location
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 }

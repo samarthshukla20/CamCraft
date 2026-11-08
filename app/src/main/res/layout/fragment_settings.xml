@@ -78,6 +78,73 @@
 
         </LinearLayout>
 
+        <!-- Location / Geotagging -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LOCATION"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#181818"
+            android:padding="18dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Save location in photos"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Embed GPS coordinates in captured photos"
+                        android:textColor="#AAAAAA"
+                        android:textSize="13sp"
+                        android:layout_marginTop="5dp" />
+
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchGeotagging"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:buttonTint="#FFFFFF" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/txtGeotaggingStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Disabled"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:layout_marginTop="10dp" />
+
+        </LinearLayout>
+
         <!-- Image Format -->
         <TextView
             android:layout_width="wrap_content"

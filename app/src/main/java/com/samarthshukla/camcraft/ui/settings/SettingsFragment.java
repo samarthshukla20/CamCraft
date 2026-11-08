@@ -17,6 +17,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.widget.Switch;
+
+import androidx.core.content.ContextCompat;
+
 import com.samarthshukla.camcraft.R;
 
 public class SettingsFragment extends Fragment {
@@ -30,6 +36,7 @@ public class SettingsFragment extends Fragment {
     private SharedPreferences preferences;
 
     private TextView locationText;
+    public static final String KEY_GEOTAGGING = "geotagging_enabled";
 
     private final ActivityResultLauncher<Uri> folderPickerLauncher =
             registerForActivityResult(
@@ -83,6 +90,7 @@ public class SettingsFragment extends Fragment {
         setupImageFormat(view);
         setupResolution(view);
         setupSaveLocation(view);
+        setupGeotagging(view);
     }
 
     private void setupImageFormat(View view) {
@@ -150,6 +158,64 @@ public class SettingsFragment extends Fragment {
                     .putString(KEY_RESOLUTION, resolution)
                     .apply();
         });
+    }
+
+    private void setupGeotagging(View view) {
+
+        Switch geotaggingSwitch = view.findViewById(R.id.switchGeotagging);
+        TextView statusText = view.findViewById(R.id.txtGeotaggingStatus);
+
+        boolean enabled = preferences.getBoolean(KEY_GEOTAGGING, false);
+
+        geotaggingSwitch.setChecked(enabled);
+        updateGeotaggingStatus(statusText, enabled);
+
+        geotaggingSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+
+            if (isChecked) {
+
+                boolean hasFineLocation =
+                        ContextCompat.checkSelfPermission(
+                                requireContext(),
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED;
+
+                boolean hasCoarseLocation =
+                        ContextCompat.checkSelfPermission(
+                                requireContext(),
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED;
+
+                if (!hasFineLocation && !hasCoarseLocation) {
+                    geotaggingSwitch.setChecked(false);
+
+                    requestPermissions(
+                            new String[]{
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                            },
+                            1001
+                    );
+
+                    return;
+                }
+            }
+
+            preferences.edit()
+                    .putBoolean(KEY_GEOTAGGING, isChecked)
+                    .apply();
+
+            updateGeotaggingStatus(statusText, isChecked);
+        });
+    }
+
+    private void updateGeotaggingStatus(TextView statusText, boolean enabled) {
+
+        if (enabled) {
+            statusText.setText("Geotagging enabled");
+        } else {
+            statusText.setText("Disabled");
+        }
     }
 
     private void setupSaveLocation(View view) {
