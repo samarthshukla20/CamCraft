@@ -45,6 +45,9 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import android.os.Handler;
+import android.os.Looper;
+
 public class CameraController {
 
     public interface CameraCallback {
@@ -57,10 +60,31 @@ public class CameraController {
         void onError(String message);
     }
 
+    public interface BurstCallback {
+        void onPhotoSaved(Uri uri, int totalSaved);
+        void onError(String message);
+        void onBurstStopped(int totalSaved);
+    }
+
     private ProcessCameraProvider cameraProvider;
     private ImageCapture imageCapture;
     private Camera camera;
     private int startRequestId = 0;
+
+    private final Handler burstHandler =
+            new Handler(Looper.getMainLooper());
+
+    private boolean isBurstCapturing = false;
+    private boolean burstCaptureInFlight = false;
+    private boolean burstStopRequested = false;
+    private boolean burstStopNotified = false;
+
+    private int burstSavedCount = 0;
+    private int burstPendingSaves = 0;
+
+    private BurstCallback burstCallback;
+    private Context burstContext;
+    private Executor burstExecutor;
     private static final ExecutorService imageProcessor =
             Executors.newSingleThreadExecutor();
 
@@ -325,6 +349,175 @@ public class CameraController {
                     }
                 }
         );
+    }
+
+// ---------------- BURST CAPTURE ----------------
+
+    public void startBurstCapture(
+            @NonNull Context context,
+            @NonNull Executor executor,
+            @NonNull BurstCallback callback
+    ) {
+        if (isBurstCapturing || imageCapture == null) {
+            return;
+        }
+
+        isBurstCapturing = true;
+        burstCaptureInFlight = false;
+        burstStopRequested = false;
+        burstStopNotified = false;
+
+        burstSavedCount = 0;
+        burstPendingSaves = 0;
+
+        burstContext = context.getApplicationContext();
+        burstExecutor = executor;
+        burstCallback = callback;
+
+        captureNextBurstPhoto();
+    }
+
+    private void captureNextBurstPhoto() {
+        if (!isBurstCapturing
+                || burstCaptureInFlight
+                || imageCapture == null) {
+            return;
+        }
+
+        burstCaptureInFlight = true;
+
+        File sourceFile = new File(
+                burstContext.getCacheDir(),
+                "burst_" + System.nanoTime() + ".jpg"
+        );
+
+        ImageCapture.OutputFileOptions outputOptions =
+                new ImageCapture.OutputFileOptions.Builder(sourceFile)
+                        .build();
+
+        ImageCapture currentCapture = imageCapture;
+
+        currentCapture.takePicture(
+                outputOptions,
+                burstExecutor,
+                new ImageCapture.OnImageSavedCallback() {
+
+                    @Override
+                    public void onImageSaved(
+                            @NonNull ImageCapture.OutputFileResults results
+                    ) {
+                        burstCaptureInFlight = false;
+                        burstPendingSaves++;
+
+                        // Start the next capture immediately.
+                        if (isBurstCapturing) {
+                            captureNextBurstPhoto();
+                        }
+
+                        // Process and save the previous photo independently.
+                        imageProcessor.execute(() -> {
+                            try {
+                                Uri savedUri = processAndSavePhoto(
+                                        burstContext,
+                                        sourceFile
+                                );
+
+                                burstHandler.post(() -> {
+                                    burstPendingSaves--;
+                                    burstSavedCount++;
+
+                                    if (burstCallback != null) {
+                                        burstCallback.onPhotoSaved(
+                                                savedUri,
+                                                burstSavedCount
+                                        );
+                                    }
+
+                                    finishBurstIfReady();
+                                });
+
+                            } catch (Exception e) {
+                                e.printStackTrace();
+
+                                burstHandler.post(() -> {
+                                    burstPendingSaves--;
+
+                                    if (burstCallback != null) {
+                                        burstCallback.onError(
+                                                e.getMessage() != null
+                                                        ? e.getMessage()
+                                                        : "Unable to process burst photo."
+                                        );
+                                    }
+
+                                    finishBurstIfReady();
+                                });
+
+                            } finally {
+                                if (sourceFile.exists()) {
+                                    sourceFile.delete();
+                                }
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onError(
+                            @NonNull ImageCaptureException exception
+                    ) {
+                        burstCaptureInFlight = false;
+
+                        if (sourceFile.exists()) {
+                            sourceFile.delete();
+                        }
+
+                        if (burstCallback != null) {
+                            burstCallback.onError(
+                                    exception.getMessage() != null
+                                            ? exception.getMessage()
+                                            : "Burst capture failed."
+                            );
+                        }
+
+                        // Stop rather than repeatedly retrying a failed capture.
+                        isBurstCapturing = false;
+                        burstStopRequested = true;
+
+                        finishBurstIfReady();
+                    }
+                }
+        );
+    }
+
+    public void stopBurstCapture() {
+        if (!isBurstCapturing) {
+            return;
+        }
+
+        isBurstCapturing = false;
+        burstStopRequested = true;
+
+        // Any already-started capture and queued saves will finish.
+        finishBurstIfReady();
+    }
+
+    private void finishBurstIfReady() {
+        if (!burstStopRequested
+                || burstCaptureInFlight
+                || burstPendingSaves > 0
+                || burstStopNotified) {
+            return;
+        }
+
+        burstStopNotified = true;
+
+        if (burstCallback != null) {
+            burstCallback.onBurstStopped(burstSavedCount);
+        }
+
+        burstCallback = null;
+        burstContext = null;
+        burstExecutor = null;
     }
 
 
@@ -690,6 +883,7 @@ public class CameraController {
 
 
     public void stopCamera() {
+        stopBurstCapture();
         startRequestId++;
 
         if (cameraProvider != null) {

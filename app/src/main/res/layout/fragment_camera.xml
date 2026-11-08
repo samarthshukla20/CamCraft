@@ -141,6 +141,23 @@
         app:layout_constraintStart_toStartOf="@id/previewView"
         app:layout_constraintEnd_toEndOf="@id/previewView" />
 
+    <TextView
+        android:id="@+id/txtBurstCounter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="9dp"
+        android:background="#CC151515"
+        android:text="BURST  •  0"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Cancel countdown -->
     <TextView
         android:id="@+id/btnCancelCountdown"

@@ -69,6 +69,11 @@ public class CameraFragment extends Fragment {
     private ScaleGestureDetector scaleGestureDetector;
     private boolean isZoomPanelOpen = false;
     private boolean isExposurePanelOpen = false;
+    private final Handler shutterHandler =
+            new Handler(Looper.getMainLooper());
+
+    private Runnable burstStartRunnable;
+    private boolean isBurstActive = false;
 
     private final ActivityResultLauncher<String> cameraPermissionLauncher =
             registerForActivityResult(
@@ -452,14 +457,112 @@ public class CameraFragment extends Fragment {
             );
         });
 
+        // Normal tap: single photo or timer capture
         binding.btnCapture.setOnClickListener(v -> {
-            if (!cameraReady) return;
+            if (!cameraReady || isBurstActive) return;
 
             if (selectedTimerSeconds > 0) {
                 startCountdown();
             } else {
                 capturePhoto();
             }
+        });
+
+// Press and hold: burst capture
+        binding.btnCapture.setOnTouchListener((v, event) -> {
+
+            switch (event.getAction()) {
+
+                case MotionEvent.ACTION_DOWN:
+
+                    if (!cameraReady || selectedTimerSeconds > 0) {
+                        return true;
+                    }
+
+                    burstStartRunnable = () -> {
+                        if (binding == null || !cameraReady) return;
+
+                        isBurstActive = true;
+
+                        binding.txtBurstCounter.setVisibility(View.VISIBLE);
+                        binding.txtBurstCounter.setText("BURST  •  0");
+
+                        cameraController.startBurstCapture(
+                                requireContext(),
+                                ContextCompat.getMainExecutor(requireContext()),
+                                new CameraController.BurstCallback() {
+
+                                    @Override
+                                    public void onPhotoSaved(Uri uri, int totalSaved) {
+                                        if (binding == null) return;
+
+                                        binding.txtBurstCounter.setText(
+                                                "BURST  •  " + totalSaved
+                                        );
+
+                                        playCaptureFlash();
+                                    }
+
+                                    @Override
+                                    public void onError(String message) {
+                                        if (binding != null) {
+                                            showMessage(message);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onBurstStopped(int totalSaved) {
+                                        isBurstActive = false;
+
+                                        if (binding != null) {
+                                            binding.txtBurstCounter.setVisibility(View.GONE);
+                                        }
+
+                                        if (totalSaved > 0 && isAdded()) {
+                                            showMessage(
+                                                    totalSaved + " burst photos captured"
+                                            );
+                                            loadLastPhotoThumbnail();
+                                        }
+                                    }
+                                }
+                        );
+                    };
+
+                    // A short hold threshold distinguishes a tap from a burst.
+                    shutterHandler.postDelayed(burstStartRunnable, 250);
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+
+                    if (burstStartRunnable != null) {
+                        shutterHandler.removeCallbacks(burstStartRunnable);
+                        burstStartRunnable = null;
+                    }
+
+                    if (isBurstActive) {
+                        cameraController.stopBurstCapture();
+                    } else {
+                        v.performClick();
+                    }
+
+                    return true;
+
+                case MotionEvent.ACTION_CANCEL:
+
+                    if (burstStartRunnable != null) {
+                        shutterHandler.removeCallbacks(burstStartRunnable);
+                        burstStartRunnable = null;
+                    }
+
+                    if (isBurstActive) {
+                        cameraController.stopBurstCapture();
+                    }
+
+                    return true;
+            }
+
+            return true;
         });
 
         binding.btnTimer.setOnClickListener(v -> showTimerMenu());
@@ -998,6 +1101,14 @@ public class CameraFragment extends Fragment {
     @Override
     public void onDestroyView() {
         if (cameraController != null) {
+            shutterHandler.removeCallbacksAndMessages(null);
+            burstStartRunnable = null;
+
+            if (isBurstActive && cameraController != null) {
+                cameraController.stopBurstCapture();
+            }
+
+            isBurstActive = false;
             cameraController.stopCamera();
         }
 
