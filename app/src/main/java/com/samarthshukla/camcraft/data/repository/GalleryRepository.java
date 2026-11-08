@@ -15,6 +15,15 @@ import com.samarthshukla.camcraft.data.model.Photo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class GalleryRepository {
 
@@ -34,11 +43,18 @@ public class GalleryRepository {
                 null
         );
 
+        List<Photo> photos;
+
         if (customLocation != null) {
-            return getCustomFolderPhotos(context, Uri.parse(customLocation));
+            photos = getCustomFolderPhotos(
+                    context,
+                    Uri.parse(customLocation)
+            );
+        } else {
+            photos = getDefaultFolderPhotos(context);
         }
 
-        return getDefaultFolderPhotos(context);
+        return groupBurstPhotos(photos);
     }
 
     // ---------------- DEFAULT MEDIASTORE FOLDER ----------------
@@ -51,7 +67,8 @@ public class GalleryRepository {
 
         String[] projection = {
                 MediaStore.Images.Media._ID,
-                MediaStore.Images.Media.DATE_ADDED
+                MediaStore.Images.Media.DATE_ADDED,
+                MediaStore.Images.Media.DISPLAY_NAME
         };
 
         String selection;
@@ -91,17 +108,26 @@ public class GalleryRepository {
                         MediaStore.Images.Media.DATE_ADDED
                 );
 
+                int nameColumn = cursor.getColumnIndexOrThrow(
+                        MediaStore.Images.Media.DISPLAY_NAME
+                );
+
                 while (cursor.moveToNext()) {
 
                     long id = cursor.getLong(idColumn);
                     long date = cursor.getLong(dateColumn);
+                    String fileName = cursor.getString(nameColumn);
 
                     Uri photoUri = ContentUris.withAppendedId(
                             collection,
                             id
                     );
 
-                    photos.add(new Photo(photoUri, date));
+                    photos.add(new Photo(
+                            photoUri,
+                            date,
+                            fileName
+                    ));
                 }
             }
 
@@ -136,7 +162,8 @@ public class GalleryRepository {
             String[] projection = {
                     DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                     DocumentsContract.Document.COLUMN_MIME_TYPE,
-                    DocumentsContract.Document.COLUMN_LAST_MODIFIED
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
             };
 
             try (Cursor cursor = context.getContentResolver().query(
@@ -161,6 +188,10 @@ public class GalleryRepository {
                         DocumentsContract.Document.COLUMN_LAST_MODIFIED
                 );
 
+                int nameColumn = cursor.getColumnIndexOrThrow(
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                );
+
                 // Keep the timestamp associated with each Photo.
                 List<Long> modifiedDates = new ArrayList<>();
 
@@ -168,6 +199,7 @@ public class GalleryRepository {
 
                     String childDocumentId = cursor.getString(idColumn);
                     String mimeType = cursor.getString(mimeColumn);
+                    String fileName = cursor.getString(nameColumn);
                     long modifiedDate = cursor.getLong(dateColumn);
 
                     if (mimeType == null || !mimeType.startsWith("image/")) {
@@ -182,7 +214,11 @@ public class GalleryRepository {
 
                     long date = modifiedDate / 1000L;
 
-                    photos.add(new Photo(photoUri, date));
+                    photos.add(new Photo(
+                            photoUri,
+                            date,
+                            fileName
+                    ));
                     modifiedDates.add(modifiedDate);
                 }
 
@@ -214,6 +250,81 @@ public class GalleryRepository {
         }
 
         return photos;
+    }
+
+    private List<Photo> groupBurstPhotos(List<Photo> inputPhotos) {
+
+        Map<String, List<Photo>> groups = new LinkedHashMap<>();
+        List<Photo> result = new ArrayList<>();
+
+        Pattern pattern = Pattern.compile(
+                "^CamCraft_BURST_(\\d+)_\\d+\\.(jpg|jpeg|png)$",
+                Pattern.CASE_INSENSITIVE
+        );
+
+        for (Photo photo : inputPhotos) {
+
+            String fileName = photo.getFileName();
+
+            if (fileName == null) {
+                result.add(photo);
+                continue;
+            }
+
+            Matcher matcher = pattern.matcher(fileName);
+
+            if (matcher.matches()) {
+
+                String burstId = matcher.group(1);
+
+                groups.computeIfAbsent(
+                        burstId,
+                        key -> new ArrayList<>()
+                ).add(photo);
+
+            } else {
+                result.add(photo);
+            }
+        }
+
+        // Convert each burst into one gallery item.
+        for (Map.Entry<String, List<Photo>> entry : groups.entrySet()) {
+
+            List<Photo> burst = entry.getValue();
+
+            burst.sort((first, second) ->
+                    Long.compare(
+                            second.getDateAdded(),
+                            first.getDateAdded()
+                    )
+            );
+
+            List<Uri> burstUris = new ArrayList<>();
+
+            for (Photo photo : burst) {
+                burstUris.add(photo.getUri());
+            }
+
+            Photo coverPhoto = burst.get(0);
+
+            result.add(new Photo(
+                    coverPhoto.getUri(),
+                    coverPhoto.getDateAdded(),
+                    entry.getKey(),
+                    burstUris,
+                    coverPhoto.getFileName()
+            ));
+        }
+
+        // Keep all gallery items newest first.
+        result.sort((first, second) ->
+                Long.compare(
+                        second.getDateAdded(),
+                        first.getDateAdded()
+                )
+        );
+
+        return result;
     }
 
 }

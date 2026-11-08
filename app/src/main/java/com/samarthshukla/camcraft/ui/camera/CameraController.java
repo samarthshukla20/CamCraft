@@ -85,6 +85,7 @@ public class CameraController {
     private BurstCallback burstCallback;
     private Context burstContext;
     private Executor burstExecutor;
+    private String currentBurstId;
     private static final ExecutorService imageProcessor =
             Executors.newSingleThreadExecutor();
 
@@ -370,6 +371,8 @@ public class CameraController {
         burstSavedCount = 0;
         burstPendingSaves = 0;
 
+        currentBurstId = String.valueOf(System.nanoTime());
+
         burstContext = context.getApplicationContext();
         burstExecutor = executor;
         burstCallback = callback;
@@ -419,7 +422,8 @@ public class CameraController {
                             try {
                                 Uri savedUri = processAndSavePhoto(
                                         burstContext,
-                                        sourceFile
+                                        sourceFile,
+                                        currentBurstId
                                 );
 
                                 burstHandler.post(() -> {
@@ -526,6 +530,14 @@ public class CameraController {
             Context context,
             File sourceFile
     ) throws Exception {
+        return processAndSavePhoto(context, sourceFile, null);
+    }
+
+    private Uri processAndSavePhoto(
+            Context context,
+            File sourceFile,
+            String burstId
+    ) throws Exception {
 
         SharedPreferences preferences = context.getSharedPreferences(
                 "camcraft_settings",
@@ -540,8 +552,20 @@ public class CameraController {
         String extension = isPng ? ".png" : ".jpg";
         String mimeType = isPng ? "image/png" : "image/jpeg";
 
-        String fileName =
-                "CamCraft_" + System.currentTimeMillis() + extension;
+        String timestamp = String.valueOf(System.currentTimeMillis());
+
+        String fileName;
+
+        if (burstId != null) {
+            fileName = "CamCraft_BURST_"
+                    + burstId + "_"
+                    + timestamp
+                    + extension;
+        } else {
+            fileName = "CamCraft_"
+                    + timestamp
+                    + extension;
+        }
 
         File finalFile = sourceFile;
 

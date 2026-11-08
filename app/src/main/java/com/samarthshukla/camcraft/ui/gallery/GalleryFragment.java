@@ -39,24 +39,43 @@ public class GalleryFragment extends Fragment {
 
 
         adapter = new PhotoAdapter(photo -> {
-            List<Photo> currentPhotos = viewModel.getPhotos().getValue();
 
-            if (currentPhotos == null || currentPhotos.isEmpty()) {
+            ArrayList<String> photoUris = new ArrayList<>();
+            int selectedIndex = 0;
+
+            if (photo.isBurst()) {
+
+                // Open only the photos belonging to this burst.
+                for (android.net.Uri uri : photo.getBurstPhotos()) {
+                    photoUris.add(uri.toString());
+                }
+
+            } else {
+
+                // Preserve existing normal gallery navigation.
+                List<Photo> currentPhotos =
+                        viewModel.getPhotos().getValue();
+
+                if (currentPhotos == null || currentPhotos.isEmpty()) {
+                    return;
+                }
+
+                selectedIndex = currentPhotos.indexOf(photo);
+
+                for (Photo item : currentPhotos) {
+                    photoUris.add(item.getUri().toString());
+                }
+            }
+
+            if (photoUris.isEmpty()) {
                 return;
             }
 
-            int selectedIndex = currentPhotos.indexOf(photo);
-
             Bundle args = new Bundle();
+
             args.putInt("selected_index", selectedIndex);
-
-            ArrayList<String> photoUris = new ArrayList<>();
-
-            for (Photo item : currentPhotos) {
-                photoUris.add(item.getUri().toString());
-            }
-
             args.putStringArrayList("photo_uris", photoUris);
+            args.putBoolean("is_burst_collection", photo.isBurst());
 
             PhotoViewerFragment viewer = new PhotoViewerFragment();
             viewer.setArguments(args);

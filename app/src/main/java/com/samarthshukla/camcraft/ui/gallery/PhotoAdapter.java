@@ -2,6 +2,7 @@
 package com.samarthshukla.camcraft.ui.gallery;
 
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -59,6 +60,20 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.PhotoViewHol
                 .load(photo.getUri())
                 .centerCrop()
                 .into(holder.binding.photoImage);
+
+// Show burst badge only for grouped photos.
+        if (photo.isBurst()) {
+
+            holder.binding.burstBadge.setVisibility(View.VISIBLE);
+
+            holder.binding.txtBurstCount.setText(
+                    String.valueOf(photo.getBurstCount())
+            );
+
+        } else {
+
+            holder.binding.burstBadge.setVisibility(View.GONE);
+        }
 
         holder.itemView.setOnClickListener(
                 v -> listener.onPhotoClick(photo)
