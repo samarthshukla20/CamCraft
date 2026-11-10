@@ -3,6 +3,7 @@ package com.samarthshukla.camcraft.ui.gallery;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.content.ActivityNotFoundException;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -31,6 +32,11 @@ import android.widget.TextView;
 import com.samarthshukla.camcraft.data.repository.PhotoDetailsReader;
 
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Locale;
+import java.io.InputStream;
+
+import androidx.exifinterface.media.ExifInterface;
 
 import android.graphics.drawable.ColorDrawable;
 import android.content.ClipData;
@@ -216,8 +222,35 @@ public class PhotoViewerFragment extends Fragment {
 
         Uri uri = Uri.parse(photoUris.get(currentIndex));
 
-        Map<String, String> details =
-                PhotoDetailsReader.read(requireContext(), uri);
+        Map<String, String> details = new HashMap<>(
+                PhotoDetailsReader.read(requireContext(), uri)
+        );
+
+        float[] gpsCoordinates = readGpsCoordinates(uri);
+
+        if (gpsCoordinates != null) {
+            details.put(
+                    "GPS location",
+                    String.format(
+                            Locale.US,
+                            "%.6f, %.6f",
+                            gpsCoordinates[0],
+                            gpsCoordinates[1]
+                    )
+            );
+
+            String altitude = readGpsAltitude(uri);
+            if (altitude != null) {
+                details.put("Altitude", altitude);
+            }
+
+            String gpsTimestamp = readGpsTimestamp(uri);
+            if (gpsTimestamp != null) {
+                details.put("Location timestamp", gpsTimestamp);
+            }
+        } else {
+            details.put("GPS location", "Location not available");
+        }
 
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_photo_details, null);
@@ -240,7 +273,8 @@ public class PhotoViewerFragment extends Fragment {
                         "Flash", "White balance"},
 
                 {"DATE & LOCATION", "📍",
-                        "Date captured", "GPS location"}
+                        "Date captured", "GPS location",
+                        "Altitude", "Location timestamp"}
         };
 
         int displayedSections = 0;
@@ -316,11 +350,21 @@ public class PhotoViewerFragment extends Fragment {
                 displayedSections == 0 ? View.VISIBLE : View.GONE
         );
 
-        AlertDialog dialog = new AlertDialog.Builder(requireContext())
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(requireContext())
                 .setTitle("Photo Details")
                 .setView(dialogView)
-                .setPositiveButton("Close", null)
-                .create();
+                .setPositiveButton("Close", null);
+
+        if (gpsCoordinates != null) {
+            dialogBuilder.setNeutralButton("Open in Maps", (dialogInterface, which) ->
+                    openLocationInMaps(
+                            gpsCoordinates[0],
+                            gpsCoordinates[1]
+                    )
+            );
+        }
+
+        AlertDialog dialog = dialogBuilder.create();
 
         dialog.show();
 
@@ -335,6 +379,92 @@ public class PhotoViewerFragment extends Fragment {
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setTextColor(Color.WHITE);
+
+        if (gpsCoordinates != null) {
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
+                    .setTextColor(Color.parseColor("#80B9FF"));
+        }
+    }
+
+    private float[] readGpsCoordinates(Uri uri) {
+        try (InputStream inputStream = requireContext()
+                .getContentResolver()
+                .openInputStream(uri)) {
+
+            if (inputStream == null) return null;
+
+            ExifInterface exif = new ExifInterface(inputStream);
+            float[] coordinates = new float[2];
+
+            return exif.getLatLong(coordinates) ? coordinates : null;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String readGpsAltitude(Uri uri) {
+        try (InputStream inputStream = requireContext()
+                .getContentResolver()
+                .openInputStream(uri)) {
+
+            if (inputStream == null) return null;
+
+            ExifInterface exif = new ExifInterface(inputStream);
+
+            if (exif.getAttribute(ExifInterface.TAG_GPS_ALTITUDE) == null) {
+                return null;
+            }
+
+            double altitude = exif.getAltitude(Double.NaN);
+            if (Double.isNaN(altitude)) return null;
+
+            return String.format(Locale.US, "%.1f m", altitude);
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String readGpsTimestamp(Uri uri) {
+        try (InputStream inputStream = requireContext()
+                .getContentResolver()
+                .openInputStream(uri)) {
+
+            if (inputStream == null) return null;
+
+            ExifInterface exif = new ExifInterface(inputStream);
+            String date = exif.getAttribute(ExifInterface.TAG_GPS_DATESTAMP);
+            String time = exif.getAttribute(ExifInterface.TAG_GPS_TIMESTAMP);
+
+            if (date == null || time == null) return null;
+
+            return date + " " + time + " UTC";
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void openLocationInMaps(double latitude, double longitude) {
+        Uri mapsUri = Uri.parse(
+                String.format(
+                        Locale.US,
+                        "geo:%f,%f?q=%f,%f",
+                        latitude,
+                        longitude,
+                        latitude,
+                        longitude
+                )
+        );
+
+        Intent mapsIntent = new Intent(Intent.ACTION_VIEW, mapsUri);
+
+        try {
+            startActivity(mapsIntent);
+        } catch (ActivityNotFoundException e) {
+            showMessage("No maps app is available.");
+        }
     }
 
     private void addDetailRow(
@@ -371,7 +501,7 @@ public class PhotoViewerFragment extends Fragment {
 
         row.addView(valueView);
 
-        if (isGps) {
+        if (isGps && !"Location not available".equals(value)) {
             TextView copyButton = new TextView(requireContext());
 
             copyButton.setText("COPY");
